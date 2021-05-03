@@ -21,7 +21,11 @@ function receiveMessage(msg) {
     //List of possible commands. Possible for students and teachers
     if (command === 'help') {
         msg.channel.send('Hello there! These are the commands that I support:');
-        msg.channel.send('```![question/hand up/hand down/next/pick @<name>/pick <number>/list/clear]```');
+        if ( msg.member.roles.cache.some(role => role.name === 'Teacher') ) {
+            msg.channel.send('```![question/hand up/hand down/next/pick @<name>/pick <number>/list/clear]```')
+        } else {
+            msg.channel.send('```![question/hand up/hand down]```')
+        }
     }
 
     //Commands for raising your hand. Possible for students and teachers
@@ -45,90 +49,92 @@ function receiveMessage(msg) {
             msg.reply('your hand has been lowered.')
         }
     }
-
-    //Commands for picking the next student with a question. Possible for teachers only
-    if (command === 'next') {
-        //Check whether there are questions left
-        if (questionList.length < 1) {
-            msg.channel.send('There are no more questions.')
-        } else {
-            //Pick first student from the list
-            const student = questionList[0]
-            msg.channel.send('The next person with a question/comment is: <@!' + student + '>')
-            //Delete this person from the list
-            questionList.splice(0, 1)
+    //Next commands are for teachers only
+    if ( msg.member.roles.cache.some(role => role.name === 'Teacher') ) {
+        //Commands for picking the next student with a question. Possible for teachers only
+        if (command === 'next') {
+            //Check whether there are questions left
+            if (questionList.length < 1) {
+                msg.channel.send('There are no more questions.')
+            } else {
+                //Pick first student from the list
+                const student = questionList[0]
+                msg.channel.send('The next person with a question/comment is: <@!' + student + '>')
+                //Delete this person from the list
+                questionList.splice(0, 1)
+            }
         }
-    }
 
-    //Commands for picking a student from the list using their name/number. Possible for teachers only
-    if (command === 'pick') {
-        //Check whether list is empty
-        if (questionList.length < 1) {
-            msg.channel.send('All questions have been answered.')
-            return
-        }
-        //Check whether it is an index or Discord ID
-        //If it is an index
-        if (args[0].length < 4) {
-            var number = parseInt(args[0])
-            if (number === 'NaN') {
+        //Commands for picking a student from the list using their name/number. Possible for teachers only
+        if (command === 'pick') {
+            //Check whether list is empty
+            if (questionList.length < 1) {
+                msg.channel.send('All questions have been answered.')
+                return
+            }
+            //Check whether it is an index or Discord ID
+            //If it is an index
+            if (args[0].length < 4) {
+                var number = parseInt(args[0])
+                if (number === 'NaN') {
+                    msg.channel.send('Please use a positive number or @<name>.')
+                    return
+                }
+                //Check whether the given number occurs in the list
+                if (number > questionList.length) {
+                    msg.channel.send('There is/are only ' + questionList.length + ' student(s) with raised hand(s)')
+                } else if (number <= questionList.length && number > 0) {
+                    //Pick student in the list with this index
+                    const pickStudent = questionList[number - 1]
+                    msg.channel.send('<@!' + pickStudent + '> had a question/comment.')
+                    //Delete this person from the list
+                    questionList.splice(number - 1, 1)
+                } else {
+                    msg.channel.send('Please pick a positive number.')
+                }
+                //If it is a Discord ID
+            } else if (args[0].length === 21 || args[0].length === 22) {
+                const pickStudent = args[0].slice(3, args[0].length - 1)
+                var idList = -2
+                idList = findMemberID(questionList, pickStudent)
+                //Check whether mentioned student is included in the list
+                if (idList === -2) {
+                    msg.channel.send('<@!' + pickStudent + '> is not present in the list.')
+                } else {
+                    msg.channel.send('<@!' + pickStudent + '>, it is your turn to speak.')
+                    questionList = idList
+                }
+
+            } else {
                 msg.channel.send('Please use a positive number or @<name>.')
                 return
             }
-            //Check whether the given number occurs in the list
-            if (number > questionList.length) {
-                msg.channel.send('There is/are only ' + questionList.length + ' student(s) with raised hand(s)')
-            } else if (number <= questionList.length && number > 0) {
-                //Pick student in the list with this index
-                const pickStudent = questionList[number - 1]
-                msg.channel.send('<@!' + pickStudent + '> had a question/comment.')
-                //Delete this person from the list
-                questionList.splice(number - 1, 1)
+        }
+
+        //Commands for showing the list. Possible for teachers only
+        if (command === 'list') {
+            let items = questionList.map((item, idx) =>
+                `${idx + 1}. Name: ${questionList[idx]}`);
+            if (items.length > 0) {
+                msg.channel.send(createInfoEmbed('Currently holding up their hands:', items.join('\n\n')));
             } else {
-                msg.channel.send('Please pick a positive number.')
+                msg.channel.send(createInfoEmbed(`There are no more raised hands.`, 'Use ```!question``` or ```!hand up``` to add items.'));
             }
-        //If it is a Discord ID
-        } else if (args[0].length === 21 || args[0].length === 22) {
-            const pickStudent = args[0].slice(3, args[0].length-1)
-            var idList = -2
-            idList = findMemberID(questionList, pickStudent)
-            //Check whether mentioned student is included in the list
-            if ( idList === -2 ) {
-                msg.channel.send('<@!' + pickStudent + '> is not present in the list.')
+        }
+
+        //Commands for clearing the list. Possible for teachers only
+        if (command === 'clear') {
+            if (questionList.length < 1) {
+                msg.channel.send('List is already empty. Use ```!question``` or ```!hand up``` to add items.')
             } else {
-                msg.channel.send('<@!' + pickStudent + '>, it is your turn to speak.')
-                questionList = idList
+                //Reset array of people with questions
+                questionList = []
+                msg.channel.send('List is empty again.')
             }
-
-        } else {
-            msg.channel.send('Please use a positive number or @<name>.')
-            return
         }
     }
 
-    //Commands for showing the list. Possible for teachers only
-    if (msg.content === prefix + 'list') {
-        let items = questionList.map((item, idx) =>
-            `${idx + 1}. Name: ${questionList[idx]}`);
-        if(items.length > 0) {
-            msg.channel.send(createInfoEmbed('Currently holding up their hands:', items.join('\n\n')));
-        } else {
-            msg.channel.send(createInfoEmbed(`There are no more raised hands.`, 'Use ```!question``` or ```!hand up``` to add items.'));
-        }
-    }
-
-    //Commands for clearing the list. Possible for teachers only
-    if (msg.content === prefix + 'clear') {
-        if (questionList.length < 1) {
-            msg.channel.send('List is already empty. Use ```!question``` or ```!hand up``` to add items.')
-        } else {
-            //Reset array of people with questions
-            questionList = []
-            msg.channel.send('List is empty again.')
-        }
-    }
-
-    if (msg.content === prefix + 'helleuw') {
+    if (command === 'helleuw') {
         msg.reply('hello there!');
     }
 
