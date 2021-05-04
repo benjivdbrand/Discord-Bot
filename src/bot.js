@@ -1,8 +1,8 @@
+require('dotenv').config()
 const Discord = require('discord.js')
 const { Timer } = require('easytimer.js')
 const client = new Discord.Client()
 const ms = require('ms')
-
 
 //directly when bot is turned on
 client.on('ready', () => {
@@ -10,7 +10,7 @@ client.on('ready', () => {
     console.log("Connected as " + client.user.tag)
 
     //setting up activity
-    client.user.setActivity("YouTube", {type: "WATCHING"})
+    client.user.setActivity("You struggle", {type: "WATCHING"})
 
     //doing something for each guild
     client.guilds.cache.forEach((guild) => {
@@ -79,8 +79,6 @@ async function processCommand(receivedMessage){
     }
 
     if (primaryCommand == "timer"){
-        let timerInfo = arguments[0]
-
         if (!arguments[0]){
             console.log("test1")
             return receivedMessage.channel.send("Gebruik: !timer + tijd + s|m|h")
@@ -90,21 +88,8 @@ async function processCommand(receivedMessage){
             console.log("test2")
             return receivedMessage.channel.send("Gebruik: !timer + tijd + s|m|h")
         }
-        
-        var timer = new Timer()
-        timer.start({countdown: true, startValues: {seconds: ms(timerInfo)/1000}})
-        console.log(timer.getTimeValues().toString())
-        let sent = await receivedMessage.channel.send("timer gedurende: "+ ms(ms(timerInfo, {long: true})))
-        let id = sent.id
-        timer.addEventListener('secondsUpdated', function (e){
-            console.log("kwarktaart")
-            editMessage = receivedMessage.channel.messages.fetch(id)
-            console.log(editMessage)
-            editMessage.then(message => {message.edit("Timer status: " + timer.getTimeValues().toString())});
-        })
-        timer.addEventListener('targetAchieved', function (e) {
-            receivedMessage.channel.send("De timer is klaar")
-        });
+
+        timer(receivedMessage, arguments)
     }
 }
 
@@ -117,5 +102,36 @@ function helpCommand(arguments, receivedMessage){
     }
 }
 
+async function timer(receivedMessage, arguments){
+    let timerLength = arguments[0]
+    let timerInfo = ""
+    for (i =1; i< arguments.length;i++){
+        timerInfo = timerInfo + arguments[i] + " "
+    }
+
+    var timer = new Timer()
+    timer.start({countdown: true, startValues: {seconds: ms(timerLength)/1000}})
+    console.log(timer.getTimeValues().toString())
+    let sent = await receivedMessage.channel.send("timer gedurende: "+ ms(ms(timerLength, {long: true})))
+    let id = sent.id
+    let counter = 0
+    timer.addEventListener('secondsUpdated', function (e){
+        counter ++
+        if (counter == 5){
+            editMessage = receivedMessage.channel.messages.fetch(id)
+            if (ms(timerLength)> 86400000){
+                const units = ['days', 'hours', 'minutes', 'seconds']
+                editMessage.then(message => {message.edit("Timer status: " + timer.getTimeValues().toString(units))});
+            } else {
+                editMessage.then(message => {message.edit("Timer status: " + timer.getTimeValues().toString())});
+            }
+            counter = 0
+        }
+    })
+    timer.addEventListener('targetAchieved', function (e) {
+        receivedMessage.channel.send("De timer, " + timerInfo + ", is klaar")
+    });
+}
+
 //bot token identification
-client.login("ODM2NTk2MDU1OTg1NzUwMDQ2.YIgSyg.89MZQfF9vSsfov5If3t9g1HpWTs")
+client.login(process.env.TOKEN)
