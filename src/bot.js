@@ -102,6 +102,7 @@ function helpCommand(arguments, receivedMessage){
     }
 }
 
+//timer functionality
 async function timer(receivedMessage, arguments){
     let timerLength = arguments[0]
     let timerInfo = ""
@@ -109,7 +110,7 @@ async function timer(receivedMessage, arguments){
         timerInfo = timerInfo + arguments[i] + " "
     }
 
-    var timer = new Timer()
+    let timer = new Timer()
     timer.start({countdown: true, startValues: {seconds: ms(timerLength)/1000}})
     console.log(timer.getTimeValues().toString())
     let sent = await receivedMessage.channel.send("timer gedurende: "+ ms(ms(timerLength, {long: true})))
@@ -129,7 +130,13 @@ async function timer(receivedMessage, arguments){
         }
     })
     timer.addEventListener('targetAchieved', function (e) {
-        receivedMessage.channel.send("De timer, " + timerInfo + ", is klaar")
+        editMessage = receivedMessage.channel.messages.fetch(id)
+        editMessage.then(message => {message.edit("Timer status: " + timer.getTimeValues().toString())});
+        if (timerInfo == ""){
+            receivedMessage.channel.send("De timer is klaar")
+        }else {
+            receivedMessage.channel.send("De timer is klaar. De timer was genaamd: " + timerInfo)
+        }
     });
 }
 
