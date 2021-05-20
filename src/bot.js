@@ -4,6 +4,9 @@ const { Timer } = require('easytimer.js')
 const client = new Discord.Client()
 const ms = require('ms')
 
+require('@tensorflow/tfjs')
+const toxicity = require('@tensorflow-models/toxicity')
+
 //directly when bot is turned on
 client.on('ready', () => {
     //displaying bot name
@@ -12,7 +15,6 @@ client.on('ready', () => {
     //setting up activity
     client.user.setActivity("You struggle", {type: "WATCHING"})
 
-    //doing something for each guild
     client.guilds.cache.forEach((guild) => {
         //print out guild names
         console.log(guild.name)
@@ -23,6 +25,7 @@ client.on('ready', () => {
             console.log(` - ${channel.name} ${channel.type} ${channel.id}`)
         })
         //General channel id: 836595717808062568
+
     })
     
     //create a general channel with use of ID
@@ -40,6 +43,8 @@ client.on('message', (receivedMessage) => {
     receivedMessage.channel.send("message received " + receivedMessage.author.toString() + ": " + receivedMessage.content)
     //emoji usage
     receivedMessage.react("😁")
+
+    moderation(receivedMessage)
 
     //! command setup
     if(receivedMessage.content.startsWith("!")) {
@@ -138,6 +143,26 @@ async function timer(receivedMessage, arguments){
             receivedMessage.channel.send("De timer is klaar. De timer was genaamd: " + timerInfo)
         }
     });
+}
+
+async function moderation(receivedMessage){
+    
+    const threshold = 0.9;
+
+    toxicity.load(threshold).then(model => {
+        const sentence = [String(receivedMessage.content)]
+
+        model.classify(sentence).then(predictions =>{
+            informationMessage = "The message: ("+receivedMessage.content+") has been checked on multiple toxicity labels." + "\n"
+            
+            for (i =0; i<7;i++){
+                lable = JSON.stringify(predictions[i].label)+": " + JSON.stringify(predictions[i].results[0].match)
+                informationMessage +=  lable +"\n"
+            }
+            informationMessage += "Link to the message: "+receivedMessage.url
+            receivedMessage.channel.send(informationMessage)
+        })
+    })
 }
 
 //bot token identification
