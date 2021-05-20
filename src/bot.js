@@ -29,9 +29,10 @@ client.on('ready', () => {
     })
     
     //create a general channel with use of ID
-    let generalChannel = client.channels.cache.get("836595717808062568")
+    // let generalChannel = client.channels.cache.get("836595717808062568")
+
     //send file(doggo)
-    generalChannel.send({files: ["https://opgelicht.assets.avrotros.nl/media_import/puppy.jpg"]})
+    // generalChannel.send({files: ["https://opgelicht.assets.avrotros.nl/media_import/puppy.jpg"]})
 })
 
 //doing something for every message received
@@ -54,7 +55,6 @@ client.on('message', (receivedMessage) => {
 
 //processing and setting up commands
 async function processCommand(receivedMessage){
-    let generalChannel = client.channels.cache.get("837304997053595698")
     let fullCommand = receivedMessage.content.substr(1)
     let splitCommand = fullCommand.split(" ")
     let primaryCommand = splitCommand[0]
