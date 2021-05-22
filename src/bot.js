@@ -163,7 +163,7 @@ async function timer(receivedMessage, arguments){
 
         }else {
             //if there is timer information added, a message including timer information is send
-            receivedMessage.channel.send("De timer is klaar. De timer was genaamd: " + timerInfo)
+            receivedMessage.channel.send("De timer is klaar. De timer was genaamd: *" + timerInfo +"*")
         }
 
         //unpin message
