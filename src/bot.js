@@ -53,7 +53,7 @@ client.on('message', (receivedMessage) => {
     }
 })
 
-//processing and setting up commands
+//processing and setting up commands and arguments
 async function processCommand(receivedMessage){
     let fullCommand = receivedMessage.content.substr(1)
     let splitCommand = fullCommand.split(" ")
@@ -84,16 +84,12 @@ async function processCommand(receivedMessage){
     }
 
     if (primaryCommand == "timer"){
+        //timer command without arguments gets feedback message
         if (!arguments[0]){
-            console.log("test1")
             return receivedMessage.channel.send("Gebruik: !timer + tijd + s|m|h")
         }
 
-        if (arguments[0]<=0){
-            console.log("test2")
-            return receivedMessage.channel.send("Gebruik: !timer + tijd + s|m|h")
-        }
-
+        //starting timer function
         timer(receivedMessage, arguments)
     }
 }
@@ -109,58 +105,123 @@ function helpCommand(arguments, receivedMessage){
 
 //timer functionality
 async function timer(receivedMessage, arguments){
+    //first argument is timer length
     let timerLength = arguments[0]
     let timerInfo = ""
+
+    //adding all arguments except timer length as information about timer in one String
     for (i =1; i< arguments.length;i++){
         timerInfo = timerInfo + arguments[i] + " "
     }
 
+    //create and start the timer
     let timer = new Timer()
     timer.start({countdown: true, startValues: {seconds: ms(timerLength)/1000}})
-    console.log(timer.getTimeValues().toString())
-    let sent = await receivedMessage.channel.send("timer gedurende: "+ ms(ms(timerLength, {long: true})))
-    let id = sent.id
+    
+    //send a message about the timer and save the message id
+    let timerMessage = await receivedMessage.channel.send("timer gedurende: "+ ms(ms(timerLength, {long: true})))
+    let id = timerMessage.id
+    
+    //pin the timer message
+    timerMessage.pin()
+
     let counter = 0
+    
+    //Event listener that activates everytime a second passes by
     timer.addEventListener('secondsUpdated', function (e){
+        //timer only updates every 5 seconds, so counter is added
         counter ++
         if (counter == 5){
+            //channel where the message was send to
             editMessage = receivedMessage.channel.messages.fetch(id)
+
+            //if the timer is longer then 24 hours, the timer will display days in the timer
             if (ms(timerLength)> 86400000){
                 const units = ['days', 'hours', 'minutes', 'seconds']
+                //edit the timer message with days
                 editMessage.then(message => {message.edit("Timer status: " + timer.getTimeValues().toString(units))});
             } else {
+                //edit the tiemr message without days
                 editMessage.then(message => {message.edit("Timer status: " + timer.getTimeValues().toString())});
             }
             counter = 0
         }
     })
+
+    //Event listener for when timer reaches 0
     timer.addEventListener('targetAchieved', function (e) {
+        //fetch message id of timer message
         editMessage = receivedMessage.channel.messages.fetch(id)
+
+        //sometimes the timer skips a second making it not end at zero, so set the timer to 0
+        //the timer is accurate, only due to lag it sometimes goes to values that are no multiple of 5
         editMessage.then(message => {message.edit("Timer status: " + timer.getTimeValues().toString())});
+        
         if (timerInfo == ""){
+            //if there is no timer information added, a simple message is send
             receivedMessage.channel.send("De timer is klaar")
+
         }else {
+            //if there is timer information added, a message including timer information is send
             receivedMessage.channel.send("De timer is klaar. De timer was genaamd: " + timerInfo)
         }
+
+        //unpin message
+        timerMessage.unpin()
     });
 }
 
+//the text moderation function
 async function moderation(receivedMessage){
-    
-    const threshold = 0.9;
+    //threshold for when a message is named toxic
+    const threshold = 0.9
 
+    let toxic = false
+    let toxicArray = []
+
+    //create a channel toxic-report if it does not exist
+    if (receivedMessage.guild.channels.cache.some(channel => channel.name === "toxic-report")==false)
+        receivedMessage.guild.channels.create("toxic-report", {
+            type: 'text'
+        }).then(channel =>{
+            console.log(channel)
+        })
+
+    //load the toxicity model
     toxicity.load(threshold).then(model => {
+        //the send message
         const sentence = [String(receivedMessage.content)]
 
-        model.classify(sentence).then(predictions =>{
-            informationMessage = "The message: ("+receivedMessage.content+") has been checked on multiple toxicity labels." + "\n"
-            
+        //sorting checking if message was toxic and adding toxicity labels to array
+        model.classify(sentence).then(predictions =>{            
             for (i =0; i<7;i++){
-                lable = JSON.stringify(predictions[i].label)+": " + JSON.stringify(predictions[i].results[0].match)
-                informationMessage +=  lable +"\n"
+                if (predictions[i].results[0].match == true){
+                    toxicArray.push(predictions[i].label)
+                    toxic = true
+                }
             }
-            informationMessage += "Link to the message: "+receivedMessage.url
-            receivedMessage.channel.send(informationMessage)
+            //listing the array of toxic labels in words
+            if (toxic == true){
+                for (i=0; i<toxicArray.length; i++){
+                    if (i == 0){
+                        toxicLabels = toxicArray[i]
+                    }
+                    else if(i == toxicArray.length-1){
+                        toxicLabels += " and " + toxicArray[i]
+                    }
+                    else{
+                        toxicLabels += ", " + toxicArray[i]
+                    }
+                }
+                //creating the message
+                informationMessage = "A message has been flagged with **" + toxicLabels + "**.\n"
+                informationMessage += "The message: *" + receivedMessage.content + "*\n"
+                informationMessage += "Link to the message: "+receivedMessage.url
+                
+                //getting toxic-report channel and sending message
+                const toxicChannel = receivedMessage.guild.channels.cache.find(channel => channel.name === 'toxic-report')
+                toxicChannel.send(informationMessage)
+            }
         })
     })
 }
