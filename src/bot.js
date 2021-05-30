@@ -55,8 +55,10 @@ client.on('message', (receivedMessage) => {
 
     //if a file is in a messge, send it to file function
     if (receivedMessage.attachments.size > 0){
+        //check if the added files are pictures of any kind
         if ((receivedMessage.attachments.first().url.includes(".png"))==true || (receivedMessage.attachments.first().url.includes(".jpg"))==true || (receivedMessage.attachments.first().url.includes(".jepg"))==true){
             file(receivedMessage, "pictures")
+        //if not pictures, then they are files
         }else{
             file(receivedMessage, "files")
         }
@@ -244,36 +246,40 @@ async function moderation(receivedMessage){
 }
 
 async function link(receivedMessage){
+    //check if a channel links exists, if not, create one
     if (receivedMessage.guild.channels.cache.some(channel => channel.name === "links")==false){
         console.log("test check")
         receivedMessage.guild.channels.create("links", {
             type: 'text'
         }).then(channel =>{
-            //console.log(channel)
-            const linkChannel = receivedMessage.guild.channels.cache.find(channel => channel.name === 'links')
-            linkChannel.send(receivedMessage)
+            //send the link
+            channel.send(receivedMessage)
         })
     }
     else {
+        //find the channel with the correct name
         const linkChannel = receivedMessage.guild.channels.cache.find(channel => channel.name === 'links')
+        //send the link
         linkChannel.send(receivedMessage)
     }
 }
 
-
+//function for sorting files and pictures(dependends on variable type)
 async function file(receivedMessage, type){
+    //check if channel exists, if not, create new channel
     if (receivedMessage.guild.channels.cache.some(channel => channel.name === type)==false){
         receivedMessage.guild.channels.create(type, {
             type: 'text'
         }).then(channel =>{
-            console.log(receivedMessage)
-            const fileChannel = receivedMessage.guild.channels.cache.find(channel => channel.name === type)
-            fileChannel.send(receivedMessage.attachments.first().url)
+            //send the file/picture
+            channel.send(receivedMessage.attachments.first().url)
         })
     }
+    //when the channel already exists
     else {
-        console.log(receivedMessage)
+        //find the channel with the correct name
         const fileChannel = receivedMessage.guild.channels.cache.find(channel => channel.name === type)
+        //send the file/picture
         fileChannel.send(receivedMessage.attachments.first().url)
     }
 }
