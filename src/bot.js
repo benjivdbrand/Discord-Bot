@@ -45,6 +45,23 @@ client.on('message', (receivedMessage) => {
     //emoji usage
     receivedMessage.react("😁")
 
+    //when a link is in a message, sent that message to link function
+    if (receivedMessage.content.includes("https://") || receivedMessage.content.includes("http://") || receivedMessage.content.includes("www.")){
+        //exclude tenor GIFs from going to links
+        if (!receivedMessage.content.includes("https://tenor.com")){
+            link(receivedMessage)
+        }
+    }
+
+    //if a file is in a messge, send it to file function
+    if (receivedMessage.attachments.size > 0){
+        if ((receivedMessage.attachments.first().url.includes(".png"))==true || (receivedMessage.attachments.first().url.includes(".jpg"))==true || (receivedMessage.attachments.first().url.includes(".jepg"))==true){
+            file(receivedMessage, "pictures")
+        }else{
+            file(receivedMessage, "files")
+        }
+    }
+
     moderation(receivedMessage)
 
     //! command setup
@@ -174,7 +191,7 @@ async function timer(receivedMessage, arguments){
 //the text moderation function
 async function moderation(receivedMessage){
     //threshold for when a message is named toxic
-    const threshold = 0.9
+    const threshold = 0.8
 
     let toxic = false
     let toxicArray = []
@@ -226,5 +243,39 @@ async function moderation(receivedMessage){
     })
 }
 
+async function link(receivedMessage){
+    if (receivedMessage.guild.channels.cache.some(channel => channel.name === "links")==false){
+        console.log("test check")
+        receivedMessage.guild.channels.create("links", {
+            type: 'text'
+        }).then(channel =>{
+            //console.log(channel)
+            const linkChannel = receivedMessage.guild.channels.cache.find(channel => channel.name === 'links')
+            linkChannel.send(receivedMessage)
+        })
+    }
+    else {
+        const linkChannel = receivedMessage.guild.channels.cache.find(channel => channel.name === 'links')
+        linkChannel.send(receivedMessage)
+    }
+}
+
+
+async function file(receivedMessage, type){
+    if (receivedMessage.guild.channels.cache.some(channel => channel.name === type)==false){
+        receivedMessage.guild.channels.create(type, {
+            type: 'text'
+        }).then(channel =>{
+            console.log(receivedMessage)
+            const fileChannel = receivedMessage.guild.channels.cache.find(channel => channel.name === type)
+            fileChannel.send(receivedMessage.attachments.first().url)
+        })
+    }
+    else {
+        console.log(receivedMessage)
+        const fileChannel = receivedMessage.guild.channels.cache.find(channel => channel.name === type)
+        fileChannel.send(receivedMessage.attachments.first().url)
+    }
+}
 //bot token identification
 client.login(process.env.TOKEN)
