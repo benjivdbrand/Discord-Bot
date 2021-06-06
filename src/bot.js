@@ -248,7 +248,6 @@ async function moderation(receivedMessage){
 async function link(receivedMessage){
     //check if a channel links exists, if not, create one
     if (receivedMessage.guild.channels.cache.some(channel => channel.name === "links")==false){
-        console.log("test check")
         receivedMessage.guild.channels.create("links", {
             type: 'text'
         }).then(channel =>{
